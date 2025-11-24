@@ -11,45 +11,25 @@ class GameController:
         self.model = GameModel()
 
         # conectar botones
-        self.view.btnSelect.configure(command=self.select_card)
         self.view.btnFight.configure(command=self.fight)
         self.view.btnLog.configure(command=self.show_log)
 
         # cargar lista inicial
-        self.load_card_list()
+        # primero cargar cartas en cola (usuario y máquina)
+        self.load_queue_cards()
 
-        self.user_slot_index = 0
+        # no usamos combobox de selección (manos se cargan automáticamente)
 
-    # -------------------------------
-    # API → Combobox
-    # -------------------------------
-    def load_card_list(self):
-        names = CardAPI.get_cards_list()
-        self.view.combo.configure(values=names)
-        if names:
-            self.view.combo.set(names[0])
+        # cargar las manos iniciales (usuario y máquina)
+        self.load_initial_hands()
+
+        # indicar que el usuario ya tiene 3 cartas (para evitar selección adicional)
+        self.user_slot_index = 3
 
     # -------------------------------
-    # Seleccionar carta usuario
     # -------------------------------
-    def select_card(self):
-        # evitar seleccionar más de 3
-        if self.user_slot_index >= 3:
-            messagebox.showinfo("Info", "Ya seleccionaste 3 cartas.")
-            return
-
-        name = self.view.combo.get()
-        card = CardAPI.get_card_by_name(name)
-
-        if card:
-            self.model.add_user_card(self.user_slot_index, card)
-            self.view.user_slots[self.user_slot_index].update(card)
-            self.user_slot_index += 1
-
-            # Si justo seleccionó la tercera carta, cargar las cartas de la máquina
-            if self.user_slot_index == 3:
-                messagebox.showinfo("Info", "Se seleccionaron 3 cartas. Cargando máquina…")
-                self.load_machine_cards()
+    # (Selector eliminado) — las manos se cargan automáticamente
+    # -------------------------------
 
     # -------------------------------
     # Cargar cartas máquina
@@ -59,6 +39,54 @@ class GameController:
             card = CardAPI.get_random_monster()
             self.model.add_machine_card(i, card)
             self.view.machine_slots[i].update(card)
+
+    def load_initial_hands(self):
+        """Carga 3 cartas aleatorias tanto para el usuario como para la máquina al iniciar."""
+        # usuario
+        for i in range(3):
+            try:
+                card = CardAPI.get_random_monster()
+                self.model.add_user_card(i, card)
+                self.view.user_slots[i].update(card)
+            except Exception:
+                pass
+
+        # máquina
+        for i in range(3):
+            try:
+                card = CardAPI.get_random_monster()
+                self.model.add_machine_card(i, card)
+                self.view.machine_slots[i].update(card)
+            except Exception:
+                pass
+
+        # desactivar botón de seleccionar porque las manos ya están llenas
+        try:
+            self.view.btnSelect.configure(state="disabled")
+        except Exception:
+            pass
+
+    # -------------------------------
+    # Cargar cartas en cola (espera)
+    # -------------------------------
+    def load_queue_cards(self):
+        # cargar 2 cartas para la cola del usuario
+        try:
+            for i in range(len(self.view.user_queue_slots)):
+                card = CardAPI.get_random_monster()
+                self.model.set_user_queue(i, card)
+                self.view.user_queue_slots[i].update(card)
+        except Exception:
+            pass
+
+        # cargar 2 cartas para la cola de la máquina
+        try:
+            for i in range(len(self.view.machine_queue_slots)):
+                card = CardAPI.get_random_monster()
+                self.model.set_machine_queue(i, card)
+                self.view.machine_queue_slots[i].update(card)
+        except Exception:
+            pass
 
     # -------------------------------
     # PELEAR
@@ -86,10 +114,23 @@ class GameController:
         self.view.user_slots[u_slot].def_label.configure(text=str(u.defe))
         self.view.machine_slots[m_slot].def_label.configure(text=str(m.defe))
 
-        # desactivar si corresponde
-        if result in ["user", "machine"]:
-            self.view.user_slots[u_slot].disable()
-            self.view.machine_slots[m_slot].disable()
+        # si hay un ganador de la ronda, quitar la carta derrotada y reemplazarla
+        if result == "user":
+            # la máquina perdió: sacar la carta de la máquina en m_slot
+            try:
+                self.model.machine_cards[m_slot] = None
+                # actualizar vista: si hay carta en cola, moverla; si no, limpiar el slot
+                self._dequeue_machine_to_slot(m_slot)
+            except Exception:
+                pass
+
+        elif result == "machine":
+            # el usuario perdió: sacar la carta de usuario en u_slot
+            try:
+                self.model.user_cards[u_slot] = None
+                self._dequeue_user_to_slot(u_slot)
+            except Exception:
+                pass
 
         # actualizar puntajes
         self.view.lblUserScore.configure(text=f"Puntaje: {self.model.user_score}")
@@ -143,6 +184,79 @@ class GameController:
         return None
 
     # -------------------------------
+    # Cola -> Tablero helpers
+    # -------------------------------
+    def _update_queue_views(self):
+        # refrescar vista de cola de usuario
+        try:
+            for i, slot in enumerate(self.view.user_queue_slots):
+                card = self.model.user_queue[i]
+                if card:
+                    slot.update(card)
+                else:
+                    # limpiar visual
+                    slot.name_label.configure(text="")
+                    slot.atk_label.configure(text="")
+                    slot.def_label.configure(text="")
+                    slot.img_label.configure(image="")
+            
+        except Exception:
+            pass
+
+        # refrescar vista de cola de máquina
+        try:
+            for i, slot in enumerate(self.view.machine_queue_slots):
+                card = self.model.machine_queue[i]
+                if card:
+                    slot.update(card)
+                else:
+                    slot.name_label.configure(text="")
+                    slot.atk_label.configure(text="")
+                    slot.def_label.configure(text="")
+                    slot.img_label.configure(image="")
+        except Exception:
+            pass
+
+    def _dequeue_user_to_slot(self, target_slot):
+        # sacar primera carta de la cola de usuario
+        card = self.model.dequeue_user()
+        if card:
+            self.model.add_user_card(target_slot, card)
+            self.view.user_slots[target_slot].update(card)
+        else:
+            # limpiar slot si no hay carta
+            try:
+                s = self.view.user_slots[target_slot]
+                s.name_label.configure(text="")
+                s.atk_label.configure(text="")
+                s.def_label.configure(text="")
+                s.img_label.configure(image="")
+                s.radio.configure(state="disabled")
+            except Exception:
+                pass
+
+        # refrescar la vista de cola
+        self._update_queue_views()
+
+    def _dequeue_machine_to_slot(self, target_slot):
+        card = self.model.dequeue_machine()
+        if card:
+            self.model.add_machine_card(target_slot, card)
+            self.view.machine_slots[target_slot].update(card)
+        else:
+            try:
+                s = self.view.machine_slots[target_slot]
+                s.name_label.configure(text="")
+                s.atk_label.configure(text="")
+                s.def_label.configure(text="")
+                s.img_label.configure(image="")
+                s.radio.configure(state="disabled")
+            except Exception:
+                pass
+
+        self._update_queue_views()
+
+    # -------------------------------
     # Nueva partida
     # -------------------------------
     def new_match(self):
@@ -183,6 +297,12 @@ class GameController:
                 self.view.user_var.set(-1)
             if hasattr(self.view, 'machine_var'):
                 self.view.machine_var.set(-1)
+        except Exception:
+            pass
+
+        # recargar cartas en cola para la nueva partida
+        try:
+            self.load_queue_cards()
         except Exception:
             pass
 

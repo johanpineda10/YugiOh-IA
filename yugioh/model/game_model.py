@@ -6,6 +6,10 @@ class GameModel:
         self.user_cards = [None, None, None]
         self.machine_cards = [None, None, None]
 
+        # colas/espera (por defecto 2 espacios)
+        self.user_queue = [None, None]
+        self.machine_queue = [None, None]
+
         self.user_score = 0
         self.machine_score = 0
 
@@ -17,6 +21,33 @@ class GameModel:
 
     def add_machine_card(self, slot, card):
         self.machine_cards[slot] = card
+
+    # -------------------------------
+    # Cola / espera
+    # -------------------------------
+    def set_user_queue(self, slot, card):
+        if 0 <= slot < len(self.user_queue):
+            self.user_queue[slot] = card
+
+    def set_machine_queue(self, slot, card):
+        if 0 <= slot < len(self.machine_queue):
+            self.machine_queue[slot] = card
+
+    def dequeue_user(self):
+        """Saca la primera carta de la cola del usuario y mantiene el tamaño fijo."""
+        if not self.user_queue:
+            return None
+        card = self.user_queue.pop(0)
+        self.user_queue.append(None)
+        return card
+
+    def dequeue_machine(self):
+        """Saca la primera carta de la cola de la máquina y mantiene el tamaño fijo."""
+        if not self.machine_queue:
+            return None
+        card = self.machine_queue.pop(0)
+        self.machine_queue.append(None)
+        return card
 
     def fight_round(self, u_card, m_card):
         """

@@ -6,7 +6,7 @@ from io import BytesIO
 
 
 class CardSlot:
-    def __init__(self, parent, row, col, variable=None, value=None):
+    def __init__(self, parent, row, col, variable=None, value=None, show_radio=True):
         self.frame = ctk.CTkFrame(parent)
         self.frame.grid(row=row, column=col, padx=10)
 
@@ -24,11 +24,17 @@ class CardSlot:
         # el valor por defecto del radio es el índice de la columna, pero
         # normalmente pasamos un `value` (0..2) para agrupar por jugador
         radio_value = value if value is not None else col
-        self.radio = ctk.CTkRadioButton(parent, variable=self.var, value=radio_value, text="")
-        # exponer la variable para que el controlador pueda consultarla
-        self.radio_var = self.var
-        self.radio.grid(row=row + 1, column=col)
-        self.radio.configure(state="disabled")
+        # crear el radio DENTRO del frame para evitar solapamientos en la grilla
+        # pero sólo si show_radio=True (slots de cola no necesitan radio)
+        self.radio = None
+        self.radio_var = None
+        if show_radio:
+            self.radio = ctk.CTkRadioButton(self.frame, variable=self.var, value=radio_value, text="")
+            # exponer la variable para que el controlador pueda consultarla
+            self.radio_var = self.var
+            # ubicar el radio dentro del frame, debajo de las labels
+            self.radio.pack(pady=(6, 0))
+            self.radio.configure(state="disabled")
 
         self.img_cache = None
 
@@ -42,10 +48,15 @@ class CardSlot:
         self.img_cache = ImageTk.PhotoImage(pil_img)
 
         self.img_label.configure(image=self.img_cache)
-        self.radio.configure(state="normal")
+        if self.radio:
+            self.radio.configure(state="normal")
 
     def disable(self):
-        self.radio.configure(state="disabled")
+        try:
+            if self.radio:
+                self.radio.configure(state="disabled")
+        except Exception:
+            pass
 
 
 class GameView(ctk.CTkFrame):
@@ -55,43 +66,77 @@ class GameView(ctk.CTkFrame):
         self.pack(fill="both", expand=True)
 
         # permitir que las filas escalen para mantener el botón abajo
-        self.grid_rowconfigure(1, weight=1)
-        # la fila 2 contiene los radios/segunda fila de los slots
-        self.grid_rowconfigure(2, weight=0)
-        # fila 3 será para la barra inferior (botón grande)
+        # (desplazadas +1 porque añadimos una fila de encabezados)
+        self.grid_rowconfigure(2, weight=1)
+        # la fila 3 contiene los radios/segunda fila de los slots
         self.grid_rowconfigure(3, weight=0)
-        for c in range(6):
+        # fila 4 será para etiquetas/colas intermedias
+        self.grid_rowconfigure(4, weight=0)
+        # ahora usamos 9 columnas: 0=cola izq, 1-3=usuario, 4=separador, 5-7=máquina, 8=cola der
+        for c in range(9):
             self.grid_columnconfigure(c, weight=1)
 
         # Combobox
-        self.combo = ctk.CTkComboBox(self, values=[])
-        self.combo.grid(row=0, column=0)
+        # TITULOS SUPERIORES: indicar claramente qué lado es usuario y cuál máquina
+        try:
+            self.lblUserTitle = ctk.CTkLabel(self, text="YUGIOH USUARIO", font=("Helvetica", 16, "bold"))
+            self.lblUserTitle.grid(row=0, column=1, columnspan=3)
+            self.lblMachineTitle = ctk.CTkLabel(self, text="YUGIOH MAQUINA", font=("Helvetica", 16, "bold"))
+            self.lblMachineTitle.grid(row=0, column=5, columnspan=3)
+        except Exception:
+            pass
 
-        self.btnSelect = ctk.CTkButton(self, text="Seleccionar carta")
-        self.btnSelect.grid(row=0, column=1)
-
+        # Cabecera: controles (sin selector ni botón de seleccionar)
         self.btnLog = ctk.CTkButton(self, text="LOG")
-        self.btnLog.grid(row=0, column=3)
+        self.btnLog.grid(row=1, column=1)
 
         # Puntajes
         self.lblUserScore = ctk.CTkLabel(self, text="Puntaje: 0")
-        self.lblUserScore.grid(row=0, column=4)
+        self.lblUserScore.grid(row=1, column=2)
 
+        # mover puntaje máquina al lado derecho (zona de la máquina)
         self.lblMachineScore = ctk.CTkLabel(self, text="Puntaje: 0")
-        self.lblMachineScore.grid(row=0, column=5)
+        self.lblMachineScore.grid(row=1, column=6)
 
         # Slots
         # variables compartidas para que solo se pueda seleccionar uno por grupo
         self.user_var = ctk.IntVar(value=-1)
         self.machine_var = ctk.IntVar(value=-1)
 
-        self.user_slots = [CardSlot(self, 1, i, variable=self.user_var, value=i) for i in range(3)]
-        self.machine_slots = [CardSlot(self, 1, i + 4, variable=self.machine_var, value=i) for i in range(3)]
+        # mover slots centrales: usuario columnas 1..3, máquina columnas 5..7
+        self.user_slots = [CardSlot(self, 2, i + 1, variable=self.user_var, value=i) for i in range(3)]
+        self.machine_slots = [CardSlot(self, 2, i + 5, variable=self.machine_var, value=i) for i in range(3)]
+
+        # separador vertical entre usuario y máquina (columna 4)
+        try:
+            self.sep = ctk.CTkFrame(self, width=2, fg_color="#5a5a5a")
+            self.sep.grid(row=2, column=4, rowspan=2, sticky="ns", pady=10)
+        except Exception:
+            pass
+
+        # Cola/espera: dos espacios adicionales por lado (para cartas en cola)
+        self.grid_rowconfigure(5, weight=0)
+        # colocar las colas en los laterales: columna 0 (izq) y 8 (der), filas 2 y 3
+        # las colas no muestran radio buttons (solo vista)
+        self.user_queue_slots = [CardSlot(self, 2 + i, 0, show_radio=False) for i in range(2)]
+        self.machine_queue_slots = [CardSlot(self, 2 + i, 8, show_radio=False) for i in range(2)]
+
+        # Opcional: etiquetas para identificar la cola
+        try:
+            self.lblUserQueue = ctk.CTkLabel(self, text="Cola usuario")
+            self.lblUserQueue.grid(row=1, column=0, sticky="n", padx=5, pady=5)
+            self.lblMachineQueue = ctk.CTkLabel(self, text="Cola máquina")
+            self.lblMachineQueue.grid(row=1, column=8, sticky="n", padx=5, pady=5)
+        except Exception:
+            pass
 
         # Barra inferior: botón de pelear grande y centrado
+
+        # reservar una fila más abajo para el botón grande
+        self.grid_rowconfigure(7, weight=1)
         self.bottom_frame = ctk.CTkFrame(self)
-        # colocar en la fila 3 para no tapar los radio buttons (que usan row=2)
-        self.bottom_frame.grid(row=3, column=0, columnspan=6, pady=20, sticky="ew")
+        # colocar en la fila 7 para no tapar los radios ni las colas
+        self.bottom_frame.grid(row=7, column=0, columnspan=9, pady=0, sticky="nsew")
 
         self.btnFight = ctk.CTkButton(
             self.bottom_frame,
@@ -102,5 +147,5 @@ class GameView(ctk.CTkFrame):
             hover_color="#b71c1c",
             font=("Helvetica", 24, "bold")
         )
-        # centrar el botón dentro del frame inferior
-        self.btnFight.pack(pady=10)
+        # centrar el botón dentro del frame inferior y dejar espacio alrededor
+        self.btnFight.pack(expand=True)
