@@ -22,9 +22,7 @@ class GameModel:
     def add_machine_card(self, slot, card):
         self.machine_cards[slot] = card
 
-    # -------------------------------
-    # Cola / espera
-    # -------------------------------
+
     def set_user_queue(self, slot, card):
         if 0 <= slot < len(self.user_queue):
             self.user_queue[slot] = card
@@ -93,7 +91,7 @@ class GameModel:
                 return "user"
             return "lower_machine_def"
 
-        return "draw"  # ambos en defensa
+        return "draw"
 
     def check_winner(self):
         if self.user_score == 2:
