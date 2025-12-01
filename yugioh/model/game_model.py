@@ -47,7 +47,7 @@ class GameModel:
         self.machine_queue.append(None)
         return card
 
-    def fight_round(self, u_card, m_card):
+    def fight_round_attack(self, u_card, m_card):
         """
         Retorna:
         - "user"
@@ -92,6 +92,44 @@ class GameModel:
             return "lower_machine_def"
 
         return "draw"
+    
+    def fight_round_defense(self, u_card, m_card):
+        atkU, defU = u_card.atk, u_card.defe
+        atkM, defM = m_card.atk, m_card.defe
+
+        defModeU = defU >= atkM
+        defModeM = defM >= atkU
+
+        if defModeU and defModeM:
+            if defU > atkM:
+                self.user_score += 1
+                return "user"
+            elif defU < atkM:
+                self.machine_score += 1
+                return "machine"
+            else:
+                return "draw"
+
+        if not defModeU and defModeM:
+            new_def = defU - atkM
+            u_card.defe = max(0, new_def)
+
+            if new_def <= 0:
+                self.machine_score += 1
+                return "machine"
+            return "lower_user_def"
+
+        if defModeU and not defModeM:
+            new_def = defM - atkU
+            m_card.defe = max(0, new_def)
+
+            if new_def <= 0:
+                self.user_score += 1
+                return "user"
+            return "lower_machine_def"
+
+        return "draw"
+
 
     def check_winner(self):
         if self.user_score == 2:

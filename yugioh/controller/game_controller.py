@@ -115,7 +115,10 @@ class GameController:
         u = self.model.user_cards[u_slot]
         m = self.model.machine_cards[m_slot]
 
-        result = self.model.fight_round(u, m)
+        if self.battleMode == "attack":
+            result = self.model.fight_round_attack(u, m)
+        else:
+            result = self.model.fight_round_defense(u, m)
 
         try:
             messagebox.showinfo("Ronda", f"Resultado: {result}\nUsuario: slot {u_slot} - Def {u.defe}\nMáquina: slot {m_slot} - Def {m.defe}")
