@@ -18,18 +18,11 @@ class GameController:
         # primero cargar cartas en cola (usuario y máquina)
         self.load_queue_cards()
 
-        # no usamos combobox de selección (manos se cargan automáticamente)
-
         # cargar las manos iniciales (usuario y máquina)
         self.load_initial_hands()
 
         # indicar que el usuario ya tiene 3 cartas (para evitar selección adicional)
         self.user_slot_index = 3
-
-    # -------------------------------
-    # -------------------------------
-    # (Selector eliminado) — las manos se cargan automáticamente
-    # -------------------------------
 
     # -------------------------------
     # Cargar cartas máquina
