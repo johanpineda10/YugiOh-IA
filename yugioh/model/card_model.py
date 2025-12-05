@@ -5,7 +5,7 @@ class Card:
     def __init__(self, name, atk, defe, img_url):
         self.name = name
         self.atk = atk
-        self.defe = defe
+        self.defe = defe if defe is not None else 0
         self.img_url = img_url
 
 class CardAPI:
