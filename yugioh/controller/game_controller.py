@@ -116,12 +116,21 @@ class GameController:
         m = self.model.machine_cards[m_slot]
 
         if self.battleMode == "attack":
-            result = self.model.fight_round_attack(u, m)
+            result = self.model.fight_round(u, m, "atk", "def") #debe modificarse ya que la decision de la maquina (4to atributo) no debe ser siempre defensa
         else:
-            result = self.model.fight_round_defense(u, m)
+            result = self.model.fight_round(u, m, "def", "atk") # organizacion(usuario, maquina, modo del usuario, modo de la maquina)
+
+        if result == "user":
+            msg = "Usuario gana la ronda"
+        elif result == "machine":
+            msg = "Máquina gana la ronda"
+        elif result == "both":              
+            msg = "Empate, ambos pierden sus cartas"
+        else:
+            msg = "No se puede combatir defesa contra defensa"
 
         try:
-            messagebox.showinfo("Ronda", f"Resultado: {result}\nUsuario: slot {u_slot} - Def {u.defe}\nMáquina: slot {m_slot} - Def {m.defe}")
+            messagebox.showinfo("Ronda", f"Resultado: {msg}\nUsuario: slot {u_slot} - Def {u.defe}\nMáquina: slot {m_slot} - Def {m.defe}")
         except Exception:
             pass
 
@@ -141,6 +150,18 @@ class GameController:
             try:
                 self.model.user_cards[u_slot] = None
                 self._dequeue_user_to_slot(u_slot)
+            except Exception:
+                pass
+        elif result == "both":
+            # ambos pierden sus cartas
+            try:
+                self.model.user_cards[u_slot] = None
+                self._dequeue_user_to_slot(u_slot)
+            except Exception:
+                pass
+            try:
+                self.model.machine_cards[m_slot] = None
+                self._dequeue_machine_to_slot(m_slot)
             except Exception:
                 pass
 

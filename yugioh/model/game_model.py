@@ -12,6 +12,8 @@ class GameModel:
 
         self.user_score = 0
         self.machine_score = 0
+        self.user_life = 10000
+        self.machine_life = 10000
 
         self.final_user_score = 0
         self.final_machine_score = 0
@@ -47,95 +49,69 @@ class GameModel:
         self.machine_queue.append(None)
         return card
 
-    def fight_round_attack(self, u_card, m_card):
+    def fight_round(self, u_card, m_card, mode_user, mode_machine):
         """
         Retorna:
         - "user"
         - "machine"
+        - "both"
         - "draw"
-        - "lower_user_def"
-        - "lower_machine_def"
         """
 
         atkU, defU = u_card.atk, u_card.defe
         atkM, defM = m_card.atk, m_card.defe
 
-        atkModeU = atkU >= defU
-        atkModeM = atkM >= defM
-
-        if atkModeU and atkModeM:
+        if mode_user == "atk" and mode_machine == "atk":
             if atkU > atkM:
                 self.user_score += 1
+                dmg = atkU - atkM
+                self.machine_life -= dmg
                 return "user"
             elif atkU < atkM:
+                dmg = atkU - atkM
                 self.machine_score += 1
+                self.user_life -= dmg
                 return "machine"
             else:
-                return "draw"
+                return "both"
 
-        if not atkModeU and atkModeM:
-            new_def = defU - atkM
-            u_card.defe = max(0, new_def)
 
-            if new_def <= 0:
-                self.machine_score += 1
-                return "machine"
-            return "lower_user_def"
-
-        if atkModeU and not atkModeM:
-            new_def = defM - atkU
-            m_card.defe = max(0, new_def)
-
-            if new_def <= 0:
+        if mode_user == "atk" and mode_machine == "def":
+            if atkU > defM:
                 self.user_score += 1
+                dmg = atkU - atkM
+                self.machine_life -= dmg
                 return "user"
-            return "lower_machine_def"
+            elif atkU < defM:
+                dmg = atkU - atkM
+                self.machine_score += 1
+                self.user_life -= dmg
+                return "machine"
+            else:
+                return "both"
 
-        return "draw"
-    
-    def fight_round_defense(self, u_card, m_card):
-        atkU, defU = u_card.atk, u_card.defe
-        atkM, defM = m_card.atk, m_card.defe
-
-        defModeU = defU >= atkM
-        defModeM = defM >= atkU
-
-        if defModeU and defModeM:
+        if mode_user == "def" and mode_machine == "atk":
             if defU > atkM:
                 self.user_score += 1
+                dmg = atkU - atkM
+                self.machine_life -= dmg
                 return "user"
             elif defU < atkM:
+                dmg = atkU - atkM
                 self.machine_score += 1
+                self.user_life -= dmg
                 return "machine"
             else:
-                return "draw"
-
-        if not defModeU and defModeM:
-            new_def = defU - atkM
-            u_card.defe = max(0, new_def)
-
-            if new_def <= 0:
-                self.machine_score += 1
-                return "machine"
-            return "lower_user_def"
-
-        if defModeU and not defModeM:
-            new_def = defM - atkU
-            m_card.defe = max(0, new_def)
-
-            if new_def <= 0:
-                self.user_score += 1
-                return "user"
-            return "lower_machine_def"
+                return "both"
 
         return "draw"
 
 
     def check_winner(self):
-        if self.user_score == 2:
+        if self.machine_life <= 0:
             self.final_user_score += 1
             return "user"
-        if self.machine_score == 2:
+        if self.user_life <= 0:
             self.final_machine_score += 1
             return "machine"
         return None
