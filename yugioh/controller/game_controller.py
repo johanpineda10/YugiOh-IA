@@ -10,11 +10,14 @@ class GameController:
         self.view = view
         self.model = GameModel()
 
-        self.battleMode = None
+        self.userBattleMode = None
+        self.machineBattleMode = None
 
         self.view.btnFight.configure(command=self.fight)
-        self.view.btnAttack.configure(command=self.set_attack)
-        self.view.btnDefense.configure(command=self.set_defense)
+        self.view.btnAttackUsu.configure(command=self.set_user_attack)
+        self.view.btnDefenseUsu.configure(command=self.set_user_defense)
+        self.view.btnAttackMaq.configure(command=self.set_machine_attack)
+        self.view.btnDefenseMaq.configure(command=self.set_machine_defense)
         self.view.btnLog.configure(command=self.show_log)
 
         self.load_queue_cards()
@@ -37,7 +40,9 @@ class GameController:
                 card = CardAPI.get_random_monster()
                 self.model.add_user_card(i, card)
                 self.view.user_slots[i].update(card)
-                self.view.user_slots[i].radio.configure(state="normal")  
+                self.view.user_slots[i].radio.configure(state="normal")
+                # Inicializar barra de vida
+                self.view.update_card_life(True, i, 3000)
             except Exception:
                 pass
 
@@ -46,13 +51,15 @@ class GameController:
                 card = CardAPI.get_random_monster()
                 self.model.add_machine_card(i, card)
                 self.view.machine_slots[i].update(card)
-                self.view.machine_slots[i].radio.configure(state="normal") 
+                self.view.machine_slots[i].radio.configure(state="normal")
+                # Inicializar barra de vida
+                self.view.update_card_life(False, i, 3000)
             except Exception:
                 pass
 
 
     def load_queue_cards(self):
-        # cargar 2 cartas para la cola del usuario
+        # cargar 8 cartas para la cola del usuario
         try:
             for i in range(len(self.view.user_queue_slots)):
                 card = CardAPI.get_random_monster()
@@ -61,7 +68,7 @@ class GameController:
         except Exception:
             pass
 
-        # cargar 2 cartas para la cola de la maquina
+        # cargar 8 cartas para la cola de la maquina
         try:
             for i in range(len(self.view.machine_queue_slots)):
                 card = CardAPI.get_random_monster()
@@ -70,39 +77,84 @@ class GameController:
         except Exception:
             pass
 
-    def set_attack(self):
-        self.battleMode = "attack"
+    def set_user_attack(self):
+        self.userBattleMode = "attack"
         self.update_mode_buttons()
 
-    def set_defense(self):
-        self.battleMode = "defense"
+    def set_user_defense(self):
+        self.userBattleMode = "defense"
+        self.update_mode_buttons()
+
+    def set_machine_attack(self):
+        self.machineBattleMode = "attack"
+        self.update_mode_buttons()
+
+    def set_machine_defense(self):
+        self.machineBattleMode = "defense"
         self.update_mode_buttons()
 
     def update_mode_buttons(self):
-        if self.battleMode == "attack":
-            self.view.btnAttack.configure(
+        # Botones del usuario
+        if self.userBattleMode == "attack":
+            self.view.btnAttackUsu.configure(
                 fg_color="#2e7d32",
                 border_width=3,
                 border_color="#4caf50"
             )
-            self.view.btnDefense.configure(
+            self.view.btnDefenseUsu.configure(
                 fg_color="#1565c0",
                 border_width=0
             )
-        else:
-            self.view.btnDefense.configure(
+        elif self.userBattleMode == "defense":
+            self.view.btnDefenseUsu.configure(
                 fg_color="#1976d2",
                 border_width=3,
                 border_color="#42a5f5"
             )
-            self.view.btnAttack.configure(
+            self.view.btnAttackUsu.configure(
+                fg_color="#1b5e20",
+                border_width=0
+            )
+        
+        # Botones de la máquina
+        if self.machineBattleMode == "attack":
+            self.view.btnAttackMaq.configure(
+                fg_color="#2e7d32",
+                border_width=3,
+                border_color="#4caf50"
+            )
+            self.view.btnDefenseMaq.configure(
+                fg_color="#1565c0",
+                border_width=0
+            )
+        elif self.machineBattleMode == "defense":
+            self.view.btnDefenseMaq.configure(
+                fg_color="#1976d2",
+                border_width=3,
+                border_color="#42a5f5"
+            )
+            self.view.btnAttackMaq.configure(
                 fg_color="#1b5e20",
                 border_width=0
             )
 
     def fight(self):
-        if self.battleMode is None:
-            messagebox.showwarning("Error", "Selecciona un modo de batalla")
+        # Detectar modo del usuario basado en el estado del botón
+        user_mode = None
+        if self.view.btnAttackUsu.cget("border_width") == 3:
+            user_mode = "atk"
+        elif self.view.btnDefenseUsu.cget("border_width") == 3:
+            user_mode = "def"
+        
+        # Detectar modo de la máquina basado en el estado del botón
+        machine_mode = None
+        if self.view.btnAttackMaq.cget("border_width") == 3:
+            machine_mode = "atk"
+        elif self.view.btnDefenseMaq.cget("border_width") == 3:
+            machine_mode = "def"
+        
+        if user_mode is None or machine_mode is None:
+            messagebox.showwarning("Error", "Selecciona un modo de batalla para ambos jugadores")
             return
         
         u_slot = self.get_selected_slot(self.view.user_slots)
@@ -115,52 +167,57 @@ class GameController:
         u = self.model.user_cards[u_slot]
         m = self.model.machine_cards[m_slot]
 
-        if self.battleMode == "attack":
-            result = self.model.fight_round(u, m, "atk", "def") #debe modificarse ya que la decision de la maquina (4to atributo) no debe ser siempre defensa
-        else:
-            result = self.model.fight_round(u, m, "def", "atk") # organizacion(usuario, maquina, modo del usuario, modo de la maquina)
+        result = self.model.fight_round(u, m, user_mode, machine_mode, u_slot, m_slot)
+
+        # Actualizar barras de vida de las cartas (clamp a 0 para no mostrar negativo)
+        self.view.update_card_life(True, u_slot, max(0, self.model.user_cards_life[u_slot]))
+        self.view.update_card_life(False, m_slot, max(0, self.model.machine_cards_life[m_slot]))
 
         if result == "user":
-            msg = "Usuario gana la ronda"
+            msg = "Usuario gana la ronda - La máquina recibe daño"
         elif result == "machine":
-            msg = "Máquina gana la ronda"
-        elif result == "both":              
-            msg = "Empate, ambos pierden sus cartas"
+            msg = "Máquina gana la ronda - El usuario recibe daño"
+        elif result == "machine_dead":
+            msg = "¡Carta de la máquina destruida!"
+        elif result == "user_dead":
+            msg = "¡Carta del usuario destruida!"
+        elif result == "both_dead":
+            msg = "¡Ambas cartas fueron destruidas!"
         else:
-            msg = "No se puede combatir defesa contra defensa"
+            msg = "Empate - No hay ganador"
 
         try:
-            messagebox.showinfo("Ronda", f"Resultado: {msg}\nUsuario: slot {u_slot} - Def {u.defe}\nMáquina: slot {m_slot} - Def {m.defe}")
+            messagebox.showinfo("Ronda", f"Resultado: {msg}\nVida Usuario: {self.model.user_cards_life[u_slot]}\nVida Máquina: {self.model.machine_cards_life[m_slot]}")
         except Exception:
             pass
 
-        self.view.user_slots[u_slot].def_label.configure(text=str(u.defe))
-        self.view.machine_slots[m_slot].def_label.configure(text=str(m.defe))
-
-        if result == "user":
-            # si la máquina perdió: sacar la carta de la máquina en m_slot
+        # Solo reemplazar cartas si murieron (vida <= 0)
+        if result == "machine_dead":
             try:
                 self.model.machine_cards[m_slot] = None
+                self.model.machine_cards_life[m_slot] = 0
                 self._dequeue_machine_to_slot(m_slot)
             except Exception:
                 pass
 
-        elif result == "machine":
-            # si el usuario perdió: sacar la carta de usuario en u_slot
+        elif result == "user_dead":
             try:
                 self.model.user_cards[u_slot] = None
+                self.model.user_cards_life[u_slot] = 0
                 self._dequeue_user_to_slot(u_slot)
             except Exception:
                 pass
-        elif result == "both":
-            # ambos pierden sus cartas
+                
+        elif result == "both_dead":
             try:
                 self.model.user_cards[u_slot] = None
+                self.model.user_cards_life[u_slot] = 0
                 self._dequeue_user_to_slot(u_slot)
             except Exception:
                 pass
             try:
                 self.model.machine_cards[m_slot] = None
+                self.model.machine_cards_life[m_slot] = 0
                 self._dequeue_machine_to_slot(m_slot)
             except Exception:
                 pass
@@ -245,6 +302,8 @@ class GameController:
         if card:
             self.model.add_user_card(target_slot, card)
             self.view.user_slots[target_slot].update(card)
+            # Inicializar la barra de vida de la nueva carta
+            self.view.update_card_life(True, target_slot, 3000)
         else:
             try:
                 s = self.view.user_slots[target_slot]
@@ -264,6 +323,8 @@ class GameController:
         if card:
             self.model.add_machine_card(target_slot, card)
             self.view.machine_slots[target_slot].update(card)
+            # Inicializar la barra de vida de la nueva carta
+            self.view.update_card_life(False, target_slot, 3000)
         else:
             try:
                 s = self.view.machine_slots[target_slot]
