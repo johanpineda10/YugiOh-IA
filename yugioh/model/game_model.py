@@ -130,27 +130,12 @@ class GameModel:
 
 
     def check_winner(self):
-        # Verificar si ya no quedan cartas en la cola y todos los slots están vacíos
-        user_has_cards = any(self.user_cards) or any(self.user_queue)
-        machine_has_cards = any(self.machine_cards) or any(self.machine_queue)
-        
-        if not machine_has_cards and not user_has_cards:
-            # Desempate por puntaje
-            if self.user_score > self.machine_score:
-                self.final_user_score += 1
-                return "user"
-            elif self.machine_score > self.user_score:
-                self.final_machine_score += 1
-                return "machine"
-            else:
-                return "draw"
-        elif not machine_has_cards:
+        if self.machine_life <= 0:
             self.final_user_score += 1
             return "user"
-        elif not user_has_cards:
+        if self.user_life <= 0:
             self.final_machine_score += 1
             return "machine"
-        
         return None
 
     def reset(self):
