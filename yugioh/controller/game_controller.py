@@ -35,27 +35,26 @@ class GameController:
             self.view.machine_slots[i].update(card)
 
     def load_initial_hands(self):
-        for i in range(3):
+        for i in range(5):
             try:
                 card = CardAPI.get_random_monster()
                 self.model.add_user_card(i, card)
                 self.view.user_slots[i].update(card)
                 self.view.user_slots[i].radio.configure(state="normal")
-                # Inicializar barra de vida
-                self.view.update_card_life(True, i, 3000)
             except Exception:
                 pass
 
-        for i in range(3):
+        for i in range(5):
             try:
                 card = CardAPI.get_random_monster()
                 self.model.add_machine_card(i, card)
                 self.view.machine_slots[i].update(card)
                 self.view.machine_slots[i].radio.configure(state="normal")
-                # Inicializar barra de vida
-                self.view.update_card_life(False, i, 3000)
             except Exception:
                 pass
+        
+        # Inicializar barras de vida globales
+        self.view.update_life_bars(self.model.user_life, self.model.machine_life)
 
 
     def load_queue_cards(self):
@@ -167,57 +166,49 @@ class GameController:
         u = self.model.user_cards[u_slot]
         m = self.model.machine_cards[m_slot]
 
-        result = self.model.fight_round(u, m, user_mode, machine_mode, u_slot, m_slot)
+        result, damage_user, damage_machine = self.model.fight_round(u, m, user_mode, machine_mode, u_slot, m_slot)
 
-        # Actualizar barras de vida de las cartas (clamp a 0 para no mostrar negativo)
-        self.view.update_card_life(True, u_slot, max(0, self.model.user_cards_life[u_slot]))
-        self.view.update_card_life(False, m_slot, max(0, self.model.machine_cards_life[m_slot]))
+        # Actualizar barras de vida globales en la vista
+        self.view.update_life_bars(self.model.user_life, self.model.machine_life)
 
-        if result == "user":
-            msg = "Usuario gana la ronda - La máquina recibe daño"
-        elif result == "machine":
-            msg = "Máquina gana la ronda - El usuario recibe daño"
-        elif result == "machine_dead":
-            msg = "¡Carta de la máquina destruida!"
-        elif result == "user_dead":
-            msg = "¡Carta del usuario destruida!"
-        elif result == "both_dead":
-            msg = "¡Ambas cartas fueron destruidas!"
+        if result == "user_loses":
+            msg = f"¡Carta del usuario destruida! Daño: {damage_user}"
+        elif result == "machine_loses":
+            msg = f"¡Carta de la máquina destruida! Daño: {damage_machine}"
+        elif result == "both_lose":
+            msg = f"¡Ambas cartas destruidas! Usuario: {damage_user} | Máquina: {damage_machine}"
         else:
             msg = "Empate - No hay ganador"
 
         try:
-            messagebox.showinfo("Ronda", f"Resultado: {msg}\nVida Usuario: {self.model.user_cards_life[u_slot]}\nVida Máquina: {self.model.machine_cards_life[m_slot]}")
+            messagebox.showinfo("Ronda", f"Resultado: {msg}\nVida Usuario: {self.model.user_life}\nVida Máquina: {self.model.machine_life}")
         except Exception:
             pass
 
-        # Solo reemplazar cartas si murieron (vida <= 0)
-        if result == "machine_dead":
+        # Reemplazar cartas perdedoras con cartas de la cola
+        if result == "machine_loses":
             try:
                 self.model.machine_cards[m_slot] = None
-                self.model.machine_cards_life[m_slot] = 0
                 self._dequeue_machine_to_slot(m_slot)
             except Exception:
                 pass
 
-        elif result == "user_dead":
+        elif result == "user_loses":
             try:
                 self.model.user_cards[u_slot] = None
-                self.model.user_cards_life[u_slot] = 0
                 self._dequeue_user_to_slot(u_slot)
             except Exception:
                 pass
                 
-        elif result == "both_dead":
+        elif result == "both_lose":
             try:
                 self.model.user_cards[u_slot] = None
-                self.model.user_cards_life[u_slot] = 0
                 self._dequeue_user_to_slot(u_slot)
             except Exception:
                 pass
             try:
                 self.model.machine_cards[m_slot] = None
-                self.model.machine_cards_life[m_slot] = 0
+                self._dequeue_machine_to_slot(m_slot)
                 self._dequeue_machine_to_slot(m_slot)
             except Exception:
                 pass
@@ -302,8 +293,6 @@ class GameController:
         if card:
             self.model.add_user_card(target_slot, card)
             self.view.user_slots[target_slot].update(card)
-            # Inicializar la barra de vida de la nueva carta
-            self.view.update_card_life(True, target_slot, 3000)
         else:
             try:
                 s = self.view.user_slots[target_slot]
@@ -323,8 +312,6 @@ class GameController:
         if card:
             self.model.add_machine_card(target_slot, card)
             self.view.machine_slots[target_slot].update(card)
-            # Inicializar la barra de vida de la nueva carta
-            self.view.update_card_life(False, target_slot, 3000)
         else:
             try:
                 s = self.view.machine_slots[target_slot]

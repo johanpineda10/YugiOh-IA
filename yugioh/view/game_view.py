@@ -127,34 +127,26 @@ class GameView(ctk.CTkFrame):
         except Exception:
             pass
 
-        # Barras de vida pequeñas por carta en fila 1
-        self.user_life_bars = []
-        self.machine_life_bars = []
+        # Barras de vida globales en fila 1
+        user_bar_frame = ctk.CTkFrame(self, fg_color="transparent")
+        user_bar_frame.grid(row=1, column=1, columnspan=3, sticky="ew", padx=5, pady=2)
         
-        for i in range(3):
-            user_bar_frame = ctk.CTkFrame(self, fg_color="transparent")
-            user_bar_frame.grid(row=1, column=i+1, sticky="ew", padx=5, pady=2)
-            
-            user_bar = ctk.CTkProgressBar(user_bar_frame, width=120, height=12, progress_color="#2ecc71")
-            user_bar.set(1.0)
-            user_bar.pack()
-            
-            user_label = ctk.CTkLabel(user_bar_frame, text="3000/3000", font=("Helvetica", 12))
-            user_label.pack()
-            
-            self.user_life_bars.append((user_bar, user_label))
-            
-            machine_bar_frame = ctk.CTkFrame(self, fg_color="transparent")
-            machine_bar_frame.grid(row=1, column=i+5, sticky="ew", padx=5, pady=2)
-            
-            machine_bar = ctk.CTkProgressBar(machine_bar_frame, width=120, height=12, progress_color="#2ecc71")
-            machine_bar.set(1.0)
-            machine_bar.pack()
-            
-            machine_label = ctk.CTkLabel(machine_bar_frame, text="3000/3000", font=("Helvetica", 12))
-            machine_label.pack()
-            
-            self.machine_life_bars.append((machine_bar, machine_label))
+        self.user_life_bar = ctk.CTkProgressBar(user_bar_frame, width=360, height=20, progress_color="#2ecc71")
+        self.user_life_bar.set(1.0)
+        self.user_life_bar.pack()
+        
+        self.user_life_label = ctk.CTkLabel(user_bar_frame, text="10000/10000", font=("Helvetica", 14, "bold"))
+        self.user_life_label.pack()
+        
+        machine_bar_frame = ctk.CTkFrame(self, fg_color="transparent")
+        machine_bar_frame.grid(row=1, column=5, columnspan=3, sticky="ew", padx=5, pady=2)
+        
+        self.machine_life_bar = ctk.CTkProgressBar(machine_bar_frame, width=360, height=20, progress_color="#2ecc71")
+        self.machine_life_bar.set(1.0)
+        self.machine_life_bar.pack()
+        
+        self.machine_life_label = ctk.CTkLabel(machine_bar_frame, text="10000/10000", font=("Helvetica", 14, "bold"))
+        self.machine_life_label.pack()
 
         self.btnLog = ctk.CTkButton(self, text="LOG")
         self.btnLog.grid(row=2, column=1)
@@ -171,18 +163,31 @@ class GameView(ctk.CTkFrame):
         self.user_var = ctk.IntVar(value=-1)
         self.machine_var = ctk.IntVar(value=-1)
 
-        # mover slots centrales SIN barras de vida (ya están en fila 1)
-        self.user_slots = [CardSlot(self, 3, i + 1, variable=self.user_var, value=i, show_life_bar=False) for i in range(3)]
-        self.machine_slots = [CardSlot(self, 3, i + 5, variable=self.machine_var, value=i, show_life_bar=False) for i in range(3)]
+        # Primera fila de slots (3 cartas) - SIN barras de vida (ya están en fila 1)
+        self.user_slots = [
+            CardSlot(self, 3, 1, variable=self.user_var, value=0, show_life_bar=False),
+            CardSlot(self, 3, 2, variable=self.user_var, value=1, show_life_bar=False),
+            CardSlot(self, 3, 3, variable=self.user_var, value=2, show_life_bar=False),
+            CardSlot(self, 4, 1, variable=self.user_var, value=3, show_life_bar=False),
+            CardSlot(self, 4, 2, variable=self.user_var, value=4, show_life_bar=False)
+        ]
+        
+        self.machine_slots = [
+            CardSlot(self, 3, 5, variable=self.machine_var, value=0, show_life_bar=False),
+            CardSlot(self, 3, 6, variable=self.machine_var, value=1, show_life_bar=False),
+            CardSlot(self, 3, 7, variable=self.machine_var, value=2, show_life_bar=False),
+            CardSlot(self, 4, 6, variable=self.machine_var, value=3, show_life_bar=False),
+            CardSlot(self, 4, 7, variable=self.machine_var, value=4, show_life_bar=False)
+        ]
 
         # separador vertical entre usuario y máquina
         try:
             self.sep = ctk.CTkFrame(self, width=2, fg_color="#5a5a5a")
-            self.sep.grid(row=3, column=4, rowspan=2, sticky="ns", pady=10)
+            self.sep.grid(row=3, column=4, rowspan=3, sticky="ns", pady=10)
         except Exception:
             pass
 
-        self.grid_rowconfigure(6, weight=0)
+        self.grid_rowconfigure(7, weight=0)
 
         # colocar las colas en los laterales - 4 cartas visibles por lado (más pequeñas)
         self.user_queue_slots = [CardSlot(self, 3 + i, 0, show_radio=False, img_size=(100, 150), show_labels=False) for i in range(4)]
@@ -196,9 +201,9 @@ class GameView(ctk.CTkFrame):
         except Exception:
             pass
 
-        self.grid_rowconfigure(8, weight=1)
+        self.grid_rowconfigure(9, weight=1)
         self.bottom_frame = ctk.CTkFrame(self)
-        self.bottom_frame.grid(row=8, column=0, columnspan=9, pady=0, sticky="nsew")
+        self.bottom_frame.grid(row=9, column=0, columnspan=9, pady=0, sticky="nsew")
 
         self.mode_frame = ctk.CTkFrame(self.bottom_frame, fg_color="transparent")
         self.mode_frame.pack(pady=(10, 5))
@@ -258,21 +263,30 @@ class GameView(ctk.CTkFrame):
         )
         self.btnFight.pack(pady=(5, 10))
 
-    def update_card_life(self, is_user, slot_index, current_life, max_life=3000):
-        """Actualiza la barra de vida de una carta específica."""
-        bars = self.user_life_bars if is_user else self.machine_life_bars
+    def update_life_bars(self, user_life, machine_life, max_life=10000):
+        """Actualiza las barras de vida globales de usuario y máquina."""
+        # Usuario
+        user_percent = max(0, user_life / max_life)
+        self.user_life_bar.set(user_percent)
         
-        if 0 <= slot_index < len(bars):
-            bar, label = bars[slot_index]
-            life_percent = max(0, current_life / max_life)
-            bar.set(life_percent)
-            
-            # Cambiar color según el porcentaje
-            if life_percent > 0.5:
-                bar.configure(progress_color="#2ecc71")  # Verde
-            elif life_percent > 0.25:
-                bar.configure(progress_color="#f39c12")  # Naranja
-            else:
-                bar.configure(progress_color="#e74c3c")  # Rojo
-            
-            label.configure(text=f"{current_life}/{max_life}")
+        if user_percent > 0.5:
+            self.user_life_bar.configure(progress_color="#2ecc71")  # Verde
+        elif user_percent > 0.25:
+            self.user_life_bar.configure(progress_color="#f39c12")  # Naranja
+        else:
+            self.user_life_bar.configure(progress_color="#e74c3c")  # Rojo
+        
+        self.user_life_label.configure(text=f"{user_life}/{max_life}")
+        
+        # Máquina
+        machine_percent = max(0, machine_life / max_life)
+        self.machine_life_bar.set(machine_percent)
+        
+        if machine_percent > 0.5:
+            self.machine_life_bar.configure(progress_color="#2ecc71")  # Verde
+        elif machine_percent > 0.25:
+            self.machine_life_bar.configure(progress_color="#f39c12")  # Naranja
+        else:
+            self.machine_life_bar.configure(progress_color="#e74c3c")  # Rojo
+        
+        self.machine_life_label.configure(text=f"{machine_life}/{max_life}")
