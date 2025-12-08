@@ -11,14 +11,18 @@ class GameModel:
         self.machine_life = 8000
 
         # colas/espera fijas (8 espacios)
-        self.user_queue = [None, None, None, None, None, None, None, None]
-        self.machine_queue = [None, None, None, None, None, None, None, None]
+        self.user_queue = []
+        self.machine_queue = []
 
         self.user_score = 0
         self.machine_score = 0
 
         self.final_user_score = 0
         self.final_machine_score = 0
+
+    def config_queues(self, size=8):
+        self.user_queue = [None] * size
+        self.machine_queue = [None] * size
 
     def add_user_card(self, slot, card):
         self.user_cards[slot] = card

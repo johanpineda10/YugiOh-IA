@@ -263,6 +263,17 @@ class GameView(ctk.CTkFrame):
         )
         self.btnFight.pack(pady=(5, 10))
 
+        self.btnConfig = ctk.CTkButton(
+            self.mode_frame,
+            text="CONFIGURAR COLAS",
+            width=250,
+            height=45,
+            fg_color="#15a2bb",
+            hover_color="#0a6066",
+            font=("Helvetica", 14, "bold")
+        )
+        self.btnConfig.pack(side="right", padx=10)
+
     def update_life_bars(self, user_life, machine_life, max_life=8000):
         """Actualiza las barras de vida globales de usuario y máquina."""
         # Usuario

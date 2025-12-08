@@ -2,6 +2,7 @@
 from tkinter import messagebox
 from model.card_model import CardAPI
 from model.game_model import GameModel
+from tkinter import simpledialog
 
 
 class GameController:
@@ -18,6 +19,7 @@ class GameController:
         self.view.btnDefenseUsu.configure(command=self.set_user_defense)
         self.view.btnAttackMaq.configure(command=self.set_machine_attack)
         self.view.btnDefenseMaq.configure(command=self.set_machine_defense)
+        self.view.btnConfig.configure(command=self.set_queue)
         self.view.btnLog.configure(command=self.show_log)
 
         self.load_queue_cards()
@@ -91,6 +93,23 @@ class GameController:
     def set_machine_defense(self):
         self.machineBattleMode = "defense"
         self.update_mode_buttons()
+
+    def set_queue(self):
+        try:
+            parent = self.view if hasattr(self.view, "winfo_toplevel") else None
+            size = simpledialog.askinteger(
+                "Configurar Cola",
+                "Introduce el tamaño de la cola:",
+                parent=parent,
+                minvalue=1,
+                maxvalue=40
+            )
+            if size is None:
+                return
+            self.model.config_queues(size=size)
+            self.load_queue_cards()
+        except Exception:
+            messagebox.showwarning("Error", "No se pudo configurar la cola. Introduce un entero válido.")
 
     def update_mode_buttons(self):
         # Botones del usuario
