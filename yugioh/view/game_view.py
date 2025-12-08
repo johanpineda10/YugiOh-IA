@@ -115,37 +115,37 @@ class GameView(ctk.CTkFrame):
         self.grid_rowconfigure(3, weight=0)
         # fila 4 será para etiquetas/colas intermedias
         self.grid_rowconfigure(4, weight=0)
-        # ahora usamos 9 columnas: 0=cola izq, 1-3=usuario, 4=separador, 5-7=máquina, 8=cola der
-        for c in range(9):
+        # ahora usamos 13 columnas: 0=cola izq, 1-5=usuario, 6=separador, 7-11=máquina, 12=cola der
+        for c in range(13):
             self.grid_columnconfigure(c, weight=1)
 
         try:
             self.lblUserTitle = ctk.CTkLabel(self, text="YUGIOH USUARIO", font=("Helvetica", 16, "bold"))
-            self.lblUserTitle.grid(row=0, column=1, columnspan=3)
+            self.lblUserTitle.grid(row=0, column=1, columnspan=5)
             self.lblMachineTitle = ctk.CTkLabel(self, text="YUGIOH MAQUINA", font=("Helvetica", 16, "bold"))
-            self.lblMachineTitle.grid(row=0, column=5, columnspan=3)
+            self.lblMachineTitle.grid(row=0, column=7, columnspan=5)
         except Exception:
             pass
 
         # Barras de vida globales en fila 1
         user_bar_frame = ctk.CTkFrame(self, fg_color="transparent")
-        user_bar_frame.grid(row=1, column=1, columnspan=3, sticky="ew", padx=5, pady=2)
+        user_bar_frame.grid(row=1, column=1, columnspan=5, sticky="ew", padx=5, pady=2)
         
         self.user_life_bar = ctk.CTkProgressBar(user_bar_frame, width=360, height=20, progress_color="#2ecc71")
         self.user_life_bar.set(1.0)
         self.user_life_bar.pack()
         
-        self.user_life_label = ctk.CTkLabel(user_bar_frame, text="10000/10000", font=("Helvetica", 14, "bold"))
+        self.user_life_label = ctk.CTkLabel(user_bar_frame, text="8000/8000", font=("Helvetica", 14, "bold"))
         self.user_life_label.pack()
         
         machine_bar_frame = ctk.CTkFrame(self, fg_color="transparent")
-        machine_bar_frame.grid(row=1, column=5, columnspan=3, sticky="ew", padx=5, pady=2)
+        machine_bar_frame.grid(row=1, column=7, columnspan=5, sticky="ew", padx=5, pady=2)
         
         self.machine_life_bar = ctk.CTkProgressBar(machine_bar_frame, width=360, height=20, progress_color="#2ecc71")
         self.machine_life_bar.set(1.0)
         self.machine_life_bar.pack()
         
-        self.machine_life_label = ctk.CTkLabel(machine_bar_frame, text="10000/10000", font=("Helvetica", 14, "bold"))
+        self.machine_life_label = ctk.CTkLabel(machine_bar_frame, text="8000/8000", font=("Helvetica", 14, "bold"))
         self.machine_life_label.pack()
 
         self.btnLog = ctk.CTkButton(self, text="LOG")
@@ -163,47 +163,47 @@ class GameView(ctk.CTkFrame):
         self.user_var = ctk.IntVar(value=-1)
         self.machine_var = ctk.IntVar(value=-1)
 
-        # Primera fila de slots (3 cartas) - SIN barras de vida (ya están en fila 1)
+        # Cinco slots en la misma fila, cartas más pequeñas para que quepan
+        small_size = (110, 150)
         self.user_slots = [
-            CardSlot(self, 3, 1, variable=self.user_var, value=0, show_life_bar=False),
-            CardSlot(self, 3, 2, variable=self.user_var, value=1, show_life_bar=False),
-            CardSlot(self, 3, 3, variable=self.user_var, value=2, show_life_bar=False),
-            CardSlot(self, 4, 1, variable=self.user_var, value=3, show_life_bar=False),
-            CardSlot(self, 4, 2, variable=self.user_var, value=4, show_life_bar=False)
+            CardSlot(self, 3, 1, variable=self.user_var, value=0, show_life_bar=False, img_size=small_size),
+            CardSlot(self, 3, 2, variable=self.user_var, value=1, show_life_bar=False, img_size=small_size),
+            CardSlot(self, 3, 3, variable=self.user_var, value=2, show_life_bar=False, img_size=small_size),
+            CardSlot(self, 3, 4, variable=self.user_var, value=3, show_life_bar=False, img_size=small_size),
+            CardSlot(self, 3, 5, variable=self.user_var, value=4, show_life_bar=False, img_size=small_size)
         ]
         
         self.machine_slots = [
-            CardSlot(self, 3, 5, variable=self.machine_var, value=0, show_life_bar=False),
-            CardSlot(self, 3, 6, variable=self.machine_var, value=1, show_life_bar=False),
-            CardSlot(self, 3, 7, variable=self.machine_var, value=2, show_life_bar=False),
-            CardSlot(self, 4, 6, variable=self.machine_var, value=3, show_life_bar=False),
-            CardSlot(self, 4, 7, variable=self.machine_var, value=4, show_life_bar=False)
+            CardSlot(self, 3, 7, variable=self.machine_var, value=0, show_life_bar=False, img_size=small_size),
+            CardSlot(self, 3, 8, variable=self.machine_var, value=1, show_life_bar=False, img_size=small_size),
+            CardSlot(self, 3, 9, variable=self.machine_var, value=2, show_life_bar=False, img_size=small_size),
+            CardSlot(self, 3, 10, variable=self.machine_var, value=3, show_life_bar=False, img_size=small_size),
+            CardSlot(self, 3, 11, variable=self.machine_var, value=4, show_life_bar=False, img_size=small_size)
         ]
 
         # separador vertical entre usuario y máquina
         try:
             self.sep = ctk.CTkFrame(self, width=2, fg_color="#5a5a5a")
-            self.sep.grid(row=3, column=4, rowspan=3, sticky="ns", pady=10)
+            self.sep.grid(row=3, column=6, rowspan=3, sticky="ns", pady=10)
         except Exception:
             pass
 
         self.grid_rowconfigure(7, weight=0)
 
         # colocar las colas en los laterales - 4 cartas visibles por lado (más pequeñas)
-        self.user_queue_slots = [CardSlot(self, 3 + i, 0, show_radio=False, img_size=(100, 150), show_labels=False) for i in range(4)]
-        self.machine_queue_slots = [CardSlot(self, 3 + i, 8, show_radio=False, img_size=(100, 150), show_labels=False) for i in range(4)]
+        self.user_queue_slots = [CardSlot(self, 3 + i, 0, show_radio=False, img_size=(90, 130), show_labels=False) for i in range(4)]
+        self.machine_queue_slots = [CardSlot(self, 3 + i, 12, show_radio=False, img_size=(90, 130), show_labels=False) for i in range(4)]
 
         try:
             self.lblUserQueue = ctk.CTkLabel(self, text="Cola usuario")
             self.lblUserQueue.grid(row=2, column=0, sticky="n", padx=5, pady=5)
             self.lblMachineQueue = ctk.CTkLabel(self, text="Cola máquina")
-            self.lblMachineQueue.grid(row=2, column=8, sticky="n", padx=5, pady=5)
+            self.lblMachineQueue.grid(row=2, column=12, sticky="n", padx=5, pady=5)
         except Exception:
             pass
 
-        self.grid_rowconfigure(9, weight=1)
         self.bottom_frame = ctk.CTkFrame(self)
-        self.bottom_frame.grid(row=9, column=0, columnspan=9, pady=0, sticky="nsew")
+        self.bottom_frame.grid(row=7, column=0, columnspan=13, pady=0, sticky="nsew")
 
         self.mode_frame = ctk.CTkFrame(self.bottom_frame, fg_color="transparent")
         self.mode_frame.pack(pady=(10, 5))
@@ -263,7 +263,7 @@ class GameView(ctk.CTkFrame):
         )
         self.btnFight.pack(pady=(5, 10))
 
-    def update_life_bars(self, user_life, machine_life, max_life=10000):
+    def update_life_bars(self, user_life, machine_life, max_life=8000):
         """Actualiza las barras de vida globales de usuario y máquina."""
         # Usuario
         user_percent = max(0, user_life / max_life)

@@ -58,7 +58,7 @@ class GameController:
 
 
     def load_queue_cards(self):
-        # cargar 8 cartas para la cola del usuario
+        # cargar 8 cartas para la cola del usuario (se muestran 4)
         try:
             for i in range(len(self.view.user_queue_slots)):
                 card = CardAPI.get_random_monster()
@@ -67,7 +67,7 @@ class GameController:
         except Exception:
             pass
 
-        # cargar 8 cartas para la cola de la maquina
+        # cargar 8 cartas para la cola de la maquina (se muestran 4)
         try:
             for i in range(len(self.view.machine_queue_slots)):
                 card = CardAPI.get_random_monster()

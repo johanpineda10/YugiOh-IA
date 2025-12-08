@@ -7,10 +7,10 @@ class GameModel:
         self.machine_cards = [None, None, None, None, None]
         
         # Vida global de cada jugador
-        self.user_life = 10000
-        self.machine_life = 10000
+        self.user_life = 8000
+        self.machine_life = 8000
 
-        # colas/espera (por defecto 8 espacios)
+        # colas/espera fijas (8 espacios)
         self.user_queue = [None, None, None, None, None, None, None, None]
         self.machine_queue = [None, None, None, None, None, None, None, None]
 
