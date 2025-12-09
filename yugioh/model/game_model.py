@@ -58,10 +58,10 @@ class GameModel:
     def fight_round(self, u_card, m_card, mode_user, mode_machine, u_slot, m_slot):
         """
         Retorna tupla: (resultado, daño_usuario, daño_maquina)
-        - resultado: "user_loses", "machine_loses", "both_lose", "draw"
-        - daño_usuario: cantidad a restar de vida del usuario
-        - daño_maquina: cantidad a restar de vida de la máquina
         """
+        # Aseguramos que existan las cartas
+        if not u_card or not m_card:
+            return "draw", 0, 0
 
         atkU, defU = u_card.atk, u_card.defe
         atkM, defM = m_card.atk, m_card.defe
@@ -70,8 +70,19 @@ class GameModel:
         damage_to_machine = 0
         result = "draw"
 
-        if mode_user == "atk" and mode_machine == "atk":
-            # Ataque vs Ataque: gana el mayor, perdedor pierde su carta y recibe daño por diferencia
+        # Normalizamos a minúsculas por seguridad
+        mode_user = mode_user.lower()
+        mode_machine = mode_machine.lower()
+
+        # Mapeo de términos por si acaso llegan mezclados
+        if mode_user == "atk": mode_user = "attack"
+        if mode_user == "def": mode_user = "defense"
+        if mode_machine == "atk": mode_machine = "attack"
+        if mode_machine == "def": mode_machine = "defense"
+
+        # Lógica de Batalla
+        if mode_user == "attack" and mode_machine == "attack":
+            # Ataque vs Ataque
             if atkU > atkM:
                 damage_to_machine = atkU - atkM
                 result = "machine_loses"
@@ -81,40 +92,41 @@ class GameModel:
                 result = "user_loses"
                 self.machine_score += 1
             else:
-                result = "draw"
+                result = "draw" # Empate de ataque, ambas mueren en reglas oficiales, aqui draw simple
 
-        elif mode_user == "atk" and mode_machine == "def":
+        elif mode_user == "attack" and mode_machine == "defense":
             # Usuario ataca, máquina defiende
             if atkU > defM:
-                damage_to_machine = atkU - defM
+                damage_to_machine = 0 # La IA pierde carta pero no vida
                 result = "machine_loses"
                 self.user_score += 1
             else:
+                # Si la defensa de la IA es mayor, TÚ recibes daño
+                if defM > atkU:
+                    damage_to_user = defM - atkU
                 result = "draw"
 
-        elif mode_user == "def" and mode_machine == "atk":
+        elif mode_user == "defense" and mode_machine == "attack":
             # Usuario defiende, máquina ataca
             if atkM > defU:
-                damage_to_user = atkM - defU
+                # Regla Oficial: Carta destruida, pero USUARIO NO RECIBE DAÑO
+                damage_to_user = 0  # <--- CAMBIO IMPORTANTE (Antes era atkM - defU)
                 result = "user_loses"
                 self.machine_score += 1
             else:
+                # Si la defensa del usuario es mayor, la máquina recibe daño
+                if defU > atkM:
+                    damage_to_machine = defU - atkM
                 result = "draw"
-
-        elif mode_user == "def" and mode_machine == "def":
-            result = "draw"
 
         # Aplicar daño a las vidas globales
         self.user_life -= damage_to_user
         self.machine_life -= damage_to_machine
         
-        if self.user_life < 0:
-            self.user_life = 0
-        if self.machine_life < 0:
-            self.machine_life = 0
+        if self.user_life < 0: self.user_life = 0
+        if self.machine_life < 0: self.machine_life = 0
 
         return result, damage_to_user, damage_to_machine
-
 
     def check_winner(self):
         if self.machine_life <= 0:

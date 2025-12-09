@@ -62,11 +62,21 @@ class CardSlot:
         if self.def_label:
             self.def_label.configure(text="DEF: "+str(card.defe))
 
-        img_data = requests.get(card.img_url).content
-        pil_img = Image.open(BytesIO(img_data)).resize(self.img_size)
-        self.img_cache = ImageTk.PhotoImage(pil_img)
+        try:
+            img_data = requests.get(card.img_url).content
+            pil_img = Image.open(BytesIO(img_data))
+            
+            # Usamos CTkImage en lugar de ImageTk.PhotoImage para mejor calidad en HighDPI
+            self.img_cache = ctk.CTkImage(
+                light_image=pil_img,
+                dark_image=pil_img,
+                size=self.img_size 
+            )
 
-        self.img_label.configure(image=self.img_cache)
+            self.img_label.configure(image=self.img_cache)
+        except Exception as e:
+            print(f"Error cargando imagen: {e}")
+
         if self.radio:
             self.radio.configure(state="normal")
         
@@ -122,7 +132,7 @@ class GameView(ctk.CTkFrame):
         try:
             self.lblUserTitle = ctk.CTkLabel(self, text="YUGIOH USUARIO", font=("Helvetica", 16, "bold"))
             self.lblUserTitle.grid(row=0, column=1, columnspan=5)
-            self.lblMachineTitle = ctk.CTkLabel(self, text="YUGIOH MAQUINA", font=("Helvetica", 16, "bold"))
+            self.lblMachineTitle = ctk.CTkLabel(self, text="YUGIOH MAQUINA (IA)", font=("Helvetica", 16, "bold"))
             self.lblMachineTitle.grid(row=0, column=7, columnspan=5)
         except Exception:
             pass
@@ -165,6 +175,7 @@ class GameView(ctk.CTkFrame):
 
         # Cinco slots en la misma fila, cartas más pequeñas para que quepan
         small_size = (110, 150)
+        # SLOTS DEL USUARIO (Se mantienen igual, con círculo para seleccionar)
         self.user_slots = [
             CardSlot(self, 3, 1, variable=self.user_var, value=0, show_life_bar=False, img_size=small_size),
             CardSlot(self, 3, 2, variable=self.user_var, value=1, show_life_bar=False, img_size=small_size),
@@ -173,12 +184,14 @@ class GameView(ctk.CTkFrame):
             CardSlot(self, 3, 5, variable=self.user_var, value=4, show_life_bar=False, img_size=small_size)
         ]
         
+        # SLOTS DE LA MÁQUINA (CORREGIDO: show_radio=False y variable=None)
+        # Esto elimina el círculo y evita que parezca que puedes hacer clic
         self.machine_slots = [
-            CardSlot(self, 3, 7, variable=self.machine_var, value=0, show_life_bar=False, img_size=small_size),
-            CardSlot(self, 3, 8, variable=self.machine_var, value=1, show_life_bar=False, img_size=small_size),
-            CardSlot(self, 3, 9, variable=self.machine_var, value=2, show_life_bar=False, img_size=small_size),
-            CardSlot(self, 3, 10, variable=self.machine_var, value=3, show_life_bar=False, img_size=small_size),
-            CardSlot(self, 3, 11, variable=self.machine_var, value=4, show_life_bar=False, img_size=small_size)
+            CardSlot(self, 3, 7, variable=None, value=0, show_radio=False, show_life_bar=False, img_size=small_size),
+            CardSlot(self, 3, 8, variable=None, value=1, show_radio=False, show_life_bar=False, img_size=small_size),
+            CardSlot(self, 3, 9, variable=None, value=2, show_radio=False, show_life_bar=False, img_size=small_size),
+            CardSlot(self, 3, 10, variable=None, value=3, show_radio=False, show_life_bar=False, img_size=small_size),
+            CardSlot(self, 3, 11, variable=None, value=4, show_radio=False, show_life_bar=False, img_size=small_size)
         ]
 
         # separador vertical entre usuario y máquina
@@ -208,20 +221,12 @@ class GameView(ctk.CTkFrame):
         self.mode_frame = ctk.CTkFrame(self.bottom_frame, fg_color="transparent")
         self.mode_frame.pack(pady=(10, 5))
 
-        self.btnAttackUsu = ctk.CTkButton(
-            self.mode_frame,
-            text="MODO ATAQUE",
-            width=250,
-            height=45,
-            fg_color="#2e7d32",
-            hover_color="#1b5e20",
-            font=("Helvetica", 14, "bold")
-        )
-        self.btnAttackUsu.pack(side="right", padx=10)
-
+        # --- SECCIÓN MODIFICADA: SOLO BOTONES DE ACCIÓN PARA EL USUARIO ---
+        
+        # Botón Defensa Usuario (Lado izquierdo)
         self.btnDefenseUsu = ctk.CTkButton(
             self.mode_frame,
-            text="MODO DEFENSA",
+            text="MODO DEFENSA (Usuario)",
             width=250,
             height=45,
             fg_color="#1976d2",
@@ -230,27 +235,31 @@ class GameView(ctk.CTkFrame):
         )
         self.btnDefenseUsu.pack(side="left", padx=10)
 
-        self.btnAttackMaq = ctk.CTkButton(
+        # Botón Ataque Usuario (Al lado de Defensa)
+        self.btnAttackUsu = ctk.CTkButton(
             self.mode_frame,
-            text="MODO ATAQUE",
+            text="MODO ATAQUE (Usuario)",
             width=250,
             height=45,
             fg_color="#2e7d32",
             hover_color="#1b5e20",
             font=("Helvetica", 14, "bold")
         )
-        self.btnAttackMaq.pack(side="left", padx=10)
+        self.btnAttackUsu.pack(side="left", padx=10)
 
-        self.btnDefenseMaq = ctk.CTkButton(
+        # Botón Configuración (Lado derecho)
+        self.btnConfig = ctk.CTkButton(
             self.mode_frame,
-            text="MODO DEFENSA",
+            text="CONFIGURAR COLAS",
             width=250,
             height=45,
-            fg_color="#1976d2",
-            hover_color="#0d47a1",
+            fg_color="#15a2bb",
+            hover_color="#0a6066",
             font=("Helvetica", 14, "bold")
         )
-        self.btnDefenseMaq.pack(side="left", padx=10)
+        self.btnConfig.pack(side="right", padx=10)
+
+        # --- FIN MODIFICACIÓN (BOTONES DE MÁQUINA ELIMINADOS) ---
 
         self.btnFight = ctk.CTkButton(
             self.bottom_frame,
@@ -262,17 +271,6 @@ class GameView(ctk.CTkFrame):
             font=("Helvetica", 24, "bold")
         )
         self.btnFight.pack(pady=(5, 10))
-
-        self.btnConfig = ctk.CTkButton(
-            self.mode_frame,
-            text="CONFIGURAR COLAS",
-            width=250,
-            height=45,
-            fg_color="#15a2bb",
-            hover_color="#0a6066",
-            font=("Helvetica", 14, "bold")
-        )
-        self.btnConfig.pack(side="right", padx=10)
 
     def update_life_bars(self, user_life, machine_life, max_life=8000):
         """Actualiza las barras de vida globales de usuario y máquina."""
