@@ -19,6 +19,9 @@ class GameModel:
 
         self.final_user_score = 0
         self.final_machine_score = 0
+        
+        self.user_can_combine = True
+        self.machine_can_combine = True
 
     def config_queues(self, size=8):
         self.user_queue = [None] * size
@@ -44,7 +47,7 @@ class GameModel:
         if not self.user_queue:
             return None
         card = self.user_queue.pop(0)
-        self.user_queue.append(None)
+        # self.user_queue.append(None)
         return card
 
     def dequeue_machine(self):
@@ -52,7 +55,7 @@ class GameModel:
         if not self.machine_queue:
             return None
         card = self.machine_queue.pop(0)
-        self.machine_queue.append(None)
+        # self.machine_queue.append(None)
         return card
 
     def fight_round(self, u_card, m_card, mode_user, mode_machine, u_slot, m_slot):

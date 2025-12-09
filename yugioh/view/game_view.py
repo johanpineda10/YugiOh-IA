@@ -6,12 +6,25 @@ from io import BytesIO
 
 
 class CardSlot:
-    def __init__(self, parent, row, col, variable=None, value=None, show_radio=True, img_size=(150, 200), show_labels=True, show_life_bar=False):
+    def __init__(self, parent, row, col, variable=None, value=None, show_radio=True, img_size=(150, 200), show_labels=True, show_life_bar=False, is_user_slot=False, controller=None):
         self.frame = ctk.CTkFrame(parent)
         self.frame.grid(row=row, column=col, padx=5, pady=2)
         self.img_size = img_size
         self.card_life = 0
         self.max_life = 3000  # Valor por defecto
+        
+        self.card_index = value  # Guardamos el índice (slot) de la carta
+        self.is_user_slot = is_user_slot # AHORA DEFINIDO
+        self.controller = controller     # AHORA DEFINIDO
+        self.is_selected = False
+        
+        # --- NUEVO: Permitir clic para seleccionar solo si es del usuario ---
+        if self.is_user_slot and self.controller:
+            self.frame.bind("<Button-1>", lambda event: self.controller.select_card_for_fusion(self.card_index))
+            # Hacemos que todos los widgets dentro del frame también activen el clic
+            for widget in self.frame.winfo_children():
+                widget.bind("<Button-1>", lambda event: self.controller.select_card_for_fusion(self.card_index))
+        # -----------------------------------------------------------------
 
         self.img_label = ctk.CTkLabel(self.frame, text="")
         self.img_label.pack()
@@ -77,12 +90,22 @@ class CardSlot:
         except Exception as e:
             print(f"Error cargando imagen: {e}")
 
-        if self.radio:
-            self.radio.configure(state="normal")
+        # if self.radio:
+        #     self.radio.configure(state="normal")
         
         # Actualizar barra de vida si existe
         if card_life is not None:
             self.update_life(card_life)
+            
+    # --- NUEVO MÉTODO: Controlar la selección visual ---
+    def set_selected(self, selected):
+        self.is_selected = selected
+        if self.is_selected:
+            self.frame.configure(border_width=3, border_color="#f39c12") # Naranja
+        else:
+            background_color = self.frame.cget("fg_color")
+ 
+            self.frame.configure(border_width=0, border_color=background_color)
 
     def update_life(self, current_life, max_life=3000):
         """Actualiza la barra de vida de la carta."""
@@ -110,9 +133,18 @@ class CardSlot:
         try:
             if self.radio:
                 self.radio.configure(state="disabled")
+            
+            # Limpiar la selección visual al deshabilitar
+            self.frame.configure(border_width=0, border_color="transparent")
+            self.img_label.configure(image=None)
+            if self.name_label: self.name_label.configure(text="VACÍO")
+            if self.atk_label: self.atk_label.configure(text="")
+            if self.def_label: self.def_label.configure(text="")
+            if self.life_label: self.life_label.configure(text="")
+            if self.life_bar: self.life_bar.set(0)
+            
         except Exception:
             pass
-
 
 class GameView(ctk.CTkFrame):
 
@@ -175,13 +207,13 @@ class GameView(ctk.CTkFrame):
 
         # Cinco slots en la misma fila, cartas más pequeñas para que quepan
         small_size = (110, 150)
-        # SLOTS DEL USUARIO (Se mantienen igual, con círculo para seleccionar)
+        
         self.user_slots = [
-            CardSlot(self, 3, 1, variable=self.user_var, value=0, show_life_bar=False, img_size=small_size),
-            CardSlot(self, 3, 2, variable=self.user_var, value=1, show_life_bar=False, img_size=small_size),
-            CardSlot(self, 3, 3, variable=self.user_var, value=2, show_life_bar=False, img_size=small_size),
-            CardSlot(self, 3, 4, variable=self.user_var, value=3, show_life_bar=False, img_size=small_size),
-            CardSlot(self, 3, 5, variable=self.user_var, value=4, show_life_bar=False, img_size=small_size)
+            CardSlot(self, 3, 1, variable=self.user_var, value=0, show_life_bar=False, img_size=small_size, is_user_slot=True, controller=self),
+            CardSlot(self, 3, 2, variable=self.user_var, value=1, show_life_bar=False, img_size=small_size, is_user_slot=True, controller=self),
+            CardSlot(self, 3, 3, variable=self.user_var, value=2, show_life_bar=False, img_size=small_size, is_user_slot=True, controller=self),
+            CardSlot(self, 3, 4, variable=self.user_var, value=3, show_life_bar=False, img_size=small_size, is_user_slot=True, controller=self),
+            CardSlot(self, 3, 5, variable=self.user_var, value=4, show_life_bar=False, img_size=small_size, is_user_slot=True, controller=self)
         ]
         
         # SLOTS DE LA MÁQUINA (CORREGIDO: show_radio=False y variable=None)
@@ -220,6 +252,19 @@ class GameView(ctk.CTkFrame):
 
         self.mode_frame = ctk.CTkFrame(self.bottom_frame, fg_color="transparent")
         self.mode_frame.pack(pady=(10, 5))
+        
+        # --- NUEVO BOTÓN DE COMBINACIÓN ---
+        self.btnCombine = ctk.CTkButton(
+            self.mode_frame,
+            text="COMBINAR CARTAS",
+            width=200,
+            height=45,
+            fg_color="#8e44ad",
+            hover_color="#6a329a",
+            font=("Helvetica", 14, "bold")
+        )
+        self.btnCombine.pack(side="right", padx=10)
+        # ---------------------------------
 
         # --- SECCIÓN MODIFICADA: SOLO BOTONES DE ACCIÓN PARA EL USUARIO ---
         
@@ -271,6 +316,18 @@ class GameView(ctk.CTkFrame):
             font=("Helvetica", 24, "bold")
         )
         self.btnFight.pack(pady=(5, 10))
+        
+    # --- NUEVO MÉTODO DE CONTROL DE LA VISTA (Para el Controller) ---
+    def select_card_for_fusion(self, slot_index):
+        """Método proxy llamado por CardSlot que re-direcciona al Controller."""
+        # Se asume que el GameController se adjuntará a self.controller
+        if hasattr(self, 'controller') and self.controller:
+            self.controller.handle_card_selection_for_fusion(slot_index)
+            
+    def update_card_selection(self, selected_indices):
+        """Actualiza la visualización de la selección de cartas."""
+        for i, slot in enumerate(self.user_slots):
+            slot.set_selected(i in selected_indices)
 
     def update_life_bars(self, user_life, machine_life, max_life=8000):
         """Actualiza las barras de vida globales de usuario y máquina."""

@@ -5,37 +5,93 @@ class MinimaxAI:
     def __init__(self, max_depth=2):
         self.max_depth = max_depth
 
-    def get_best_move(self, model, user_card, user_mode):
-        """
-        Analiza las cartas de la IA y elige la que mejor contrarresta a la carta del usuario.
-        """
-        # Obtenemos movimientos posibles de la IA
-        possible_moves = self.get_valid_moves(model)
+    def get_best_move(self, model, opponent_card, opponent_mode):
+        """Decide entre combinar cartas o elegir el mejor movimiento de ataque/defensa."""
         
-        if not possible_moves:
-            print("AI: No tiene cartas.")
-            return None
+        # 1. EVALUAR COMBINACIÓN (Solo si está disponible en el modelo)
+        # Nota: Asumimos que model.can_combine_this_turn existe en GameModel
+        if hasattr(model, 'can_combine_this_turn') and model.can_combine_this_turn:
+            combine_option = self._evaluate_ai_combination(model)
+            
+            # Umbral de ganancia de poder para que valga la pena combinar
+            if combine_option and combine_option['score'] > 2000: 
+                # Si la combinación es muy rentable, la elegimos y terminamos el turno.
+                return combine_option
+        
+        # 2. Si no combina o la combinación no es rentable, procede a la pelea
+        return self._get_best_fight_move(model, opponent_card, opponent_mode)
 
-        best_score = -math.inf
+    
+    def _get_best_fight_move(self, model, user_card, user_mode):
+        """Busca el mejor movimiento (carta + modo) para contrarrestar al usuario."""
+        
+        best_score = -float('inf')
         best_move = None
-
-        print(f"\n--- IA CONTRARRESTANDO A {user_card.name} ({user_mode}) ---")
+        
+        # Usamos get_valid_moves (que ya existe en tu código)
+        possible_moves = self.get_valid_moves(model) 
+        
+        # Si la IA no tiene cartas válidas para jugar
+        if not possible_moves:
+            return None 
 
         for move in possible_moves:
-            # Evaluamos contra la carta ESPECIFICA del usuario
+            # Aquí aplicarías Minimax si fuera la implementación completa, 
+            # pero usamos la evaluación heurística directa para un 'counter'.
+            
+            # Nota: Esto no usa la profundidad (self.max_depth) ni Minimax real, 
+            # solo la heurística de 'evaluate_counter_move' que tú definiste.
             score = self.evaluate_counter_move(move, user_card, user_mode)
             
-            # Logs para ver qué piensa
-            idx = move['index']
-            mode = move['mode']
-            print(f"IA Slot {idx} [{mode}] -> Score: {score}")
-
             if score > best_score:
                 best_score = score
                 best_move = move
 
-        print(f"--- IA ELIGE: Slot {best_move['index']} {best_move['mode']} ---\n")
-        return best_move
+        # Aseguramos que el movimiento de pelea tenga el formato esperado por el controlador
+        if best_move:
+            return {
+                'type': 'fight',
+                'index': best_move['index'],
+                'mode': best_move['mode'],
+                # No es necesario retornar card_ref al controlador
+            }
+        return None
+
+    # NUEVA FUNCIÓN: Genera todas las posibles combinaciones para la IA
+    def _evaluate_ai_combination(self, model):
+        best_combination = None
+        max_power_gain = 0
+        
+        # Iterar sobre todas las parejas de cartas de la IA
+        for i in range(5):
+            for j in range(i + 1, 5):
+                card1 = model.machine_cards[i]
+                card2 = model.machine_cards[j]
+                
+                if card1 and card2:
+                    # Simular la fusión (misma lógica que en GameController)
+                    new_atk = max(card1.atk, card2.atk) + 1000
+                    new_def = max(card1.defe, card2.defe) + 1000
+                    
+                    # Heurística: ¿Cuánto poder gana la IA?
+                    current_power = card1.atk + card1.defe + card2.atk + card2.defe
+                    new_power = new_atk + new_def 
+                    power_gain = new_power - current_power
+                    
+                    if power_gain > max_power_gain:
+                        max_power_gain = power_gain
+                        best_combination = {
+                            'type': 'combine',
+                            'slots': (i, j),
+                            'new_atk': new_atk,
+                            'new_def': new_def,
+                            'score': power_gain # Usamos la ganancia de poder como score
+                        }
+
+        # La IA solo combina si gana un poder muy significativo (ej. > 4000)
+        if best_combination and best_combination['score'] > 4000:
+            return best_combination
+        return None
 
     def get_valid_moves(self, model):
         moves = []

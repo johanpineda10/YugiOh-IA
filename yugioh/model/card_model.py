@@ -7,6 +7,7 @@ class Card:
         self.atk = atk
         self.defe = defe if defe is not None else 0
         self.img_url = img_url
+        self.life = 3000
 
 class CardAPI:
 
